@@ -11,7 +11,7 @@ class UserInfoMapper {
         firstName = entity.firstName,
         lastName = entity.lastName,
         email = entity.email,
-        username = entity.appUsername
+        username = entity.username
     )
 
 }

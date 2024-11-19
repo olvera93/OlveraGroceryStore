@@ -36,15 +36,14 @@ spring:
             enable: true
 
 
+
 springdoc:
   api-docs:
     enabled: true
-    path: '/api/v3/api-docs'
+    path: /api/v3/api-docs
   swagger-ui:
-    path: '/api/swagger-ui.html'
-    configUrl: '/api/v3/api-docs/swagger-config'
-    disable-swagger-default-url: true
-    url: /api/open-api.yml
+    path: /api/swagger-ui.html
+    url: /api/v3/api-docs
 
 
 

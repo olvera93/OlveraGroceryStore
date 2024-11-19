@@ -84,6 +84,7 @@ openApiGenerate {
 	configOptions.set(mapOf("useSpringBoot3" to "true"))
 }
 
+
 kotlin {
 	compilerOptions {
 		freeCompilerArgs.addAll("-Xjsr305=strict")

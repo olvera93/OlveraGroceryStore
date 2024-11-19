@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.RestController
 @CrossOrigin(value = ["*"])
 @Validated
 @Tag(name = "user-resource")
-
 class UserController(
     private val userService: AppUserService
 ) {

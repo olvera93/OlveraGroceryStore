@@ -5,7 +5,7 @@ import org.springframework.security.core.Authentication
 
 interface ClientSessionService {
 
-    fun retrieveAuthentication(): Authentication
+    fun retrieveAuthentication(): Authentication?
 
     fun findCurrentSessionUser(): AppUser
 

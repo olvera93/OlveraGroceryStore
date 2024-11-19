@@ -33,9 +33,9 @@ class JwtAuthenticationFilter(
         filterChain: FilterChain
     ) {
 
-        val authHeader: String = request.getHeader(AUTH_HEADER)
+        val authHeader: String? = request.getHeader(AUTH_HEADER)
 
-        if (authHeader.startsWith(BEARER_TOKEN_PREFIX)) {
+        if (authHeader?.startsWith(BEARER_TOKEN_PREFIX) == true) {
             val jwt: String = authHeader.drop(BEARER_TOKEN_PREFIX.length)
             if (SecurityContextHolder.getContext().authentication == null) {
                 runCatching {

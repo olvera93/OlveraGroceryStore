@@ -66,12 +66,7 @@ class AccountManagementServiceImpl(
 
         val user = currentVerificationToken.appUser
         if (currentVerificationToken.isExpired()) {
-            log.error("Token expired for user: $user")
-            currentVerificationToken.token = UUID.randomUUID().toString()
-            currentVerificationToken.expiryDate = Instant.now().plus(15, ChronoUnit.MINUTES)
-            tokenRepository.save(currentVerificationToken)
-            emailService.sendVerificationEmail(user, currentVerificationToken.token)
-            throw TokenExpiredException("Token expired, a new verification link has been sent to your email: ${user.email}")
+            handleExpiredToken(user, currentVerificationToken)
         }
 
         if (user.isVerified) {
@@ -147,5 +142,14 @@ class AccountManagementServiceImpl(
             log.error("Password and password confirmation does not match: $request")
             throw SignUpException("Password and password confirmation does not match!")
         }
+    }
+
+    private fun handleExpiredToken(user: AppUser, currentVerificationToken: VerificationToken) {
+        log.error("Token expired for user: $user")
+        currentVerificationToken.token = UUID.randomUUID().toString()
+        currentVerificationToken.expiryDate = Instant.now().plus(15, ChronoUnit.MINUTES)
+        tokenRepository.save(currentVerificationToken)
+        emailService.sendVerificationEmail(user, currentVerificationToken.token)
+        throw TokenExpiredException("Token expired, a new verification link has been sent to your email: ${user.email}")
     }
 }

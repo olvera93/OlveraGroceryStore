@@ -3,17 +3,17 @@ package com.olvera.groceries.service
 import com.olvera.groceries.dto.AuthenticationRequest
 import com.olvera.groceries.dto.EmailConfirmedResponse
 import com.olvera.groceries.dto.RegisterRequest
+import com.olvera.groceries.error.AccountVerificationException
 import com.olvera.groceries.error.SignUpException
+import com.olvera.groceries.error.TokenExpiredException
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.VerificationToken
 import com.olvera.groceries.repository.AppUserRepository
 import com.olvera.groceries.repository.VerificationTokenRepository
 import com.olvera.groceries.service.impl.AccountManagementServiceImpl
 import com.olvera.groceries.util.SignUpMapper
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
-import org.junit.jupiter.api.Assertions.assertEquals
+import io.mockk.*
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.security.authentication.AuthenticationManager
@@ -57,6 +57,9 @@ class AccountManagementServiceImplTest {
     private val authenticationRequest = AuthenticationRequest(
         "najw-kara", "hello123"
     )
+
+    private val token = "valid-token1"
+
 
     private val objectUnderTest = AccountManagementServiceImpl(
         mockPasswordEncoder,
@@ -131,4 +134,71 @@ class AccountManagementServiceImplTest {
         verify(exactly = 0) { mockUserRepository.save(user) }
         verify(exactly = 0) { mockTokenRepository.save(any()) }
     }
+
+    @Test
+    fun `when verify user is triggered then expect verified successfully message`() {
+
+        every { mockTokenRepository.findByToken(token) } returns verificationToken
+        every { mockUserRepository.save(user) } returns user
+
+        val actualResult: EmailConfirmedResponse = objectUnderTest.verify(token)
+
+        assertEquals("Account successfully verified.", actualResult.message)
+        assertTrue(user.isVerified)
+        verify { mockUserRepository.save(user) }
+    }
+
+    @Test
+    fun `when verify user is triggered then expect invalid token message`() {
+
+        every { mockTokenRepository.findByToken(token) } returns null
+
+        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token)  }
+
+        assertEquals("Invalid Token!", actualResult.message)
+        verify { mockTokenRepository.findByToken(token) }
+    }
+
+    @Test
+    fun `when verify user is triggered then expect account is already verified message`() {
+
+        val currentUser = AppUser()
+        currentUser.isVerified = true
+
+        val currentToken = VerificationToken(
+            token = "a1.b2.c3",
+            appUser = currentUser,
+            expiryDate = Instant.now().plus(1, ChronoUnit.DAYS)
+        )
+
+        every { mockTokenRepository.findByToken(token) } returns currentToken
+
+        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token)  }
+
+        assertEquals("Account is already verified for: $currentUser", actualResult.message)
+        verify { mockTokenRepository.findByToken(token) }
+        verify(exactly = 0) { mockUserRepository.save(currentUser)  }
+    }
+
+    @Test
+    fun `when verify user is triggered then expect token expired message`() {
+
+        val expiredToken = VerificationToken(
+            token = "a1.b2.c3",
+            appUser = user,
+            expiryDate = Instant.now().minusSeconds(3600)
+        )
+
+        every { mockTokenRepository.findByToken(token) } returns expiredToken
+        every { mockTokenRepository.save(expiredToken) } returns expiredToken
+        every { mockEmailService.sendVerificationEmail(user, any()) } returns Unit
+
+        val actualResult = assertThrows<TokenExpiredException> { objectUnderTest.verify(token)  }
+
+        assertEquals("Token expired, a new verification link has been sent to your email: ${user.email}", actualResult.message)
+        verify { mockTokenRepository.findByToken(token) }
+        verify { mockTokenRepository.save(expiredToken)  }
+        verify { mockEmailService.sendVerificationEmail(user, any()) }
+    }
+
 }

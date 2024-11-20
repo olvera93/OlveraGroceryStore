@@ -56,7 +56,7 @@ class AccountManagementServiceImpl(
         tokenRepository.save(verificationToken)
         emailService.sendVerificationEmail(savedUser, token)
 
-        return EmailConfirmedResponse("Please, check your email and spam/junk for ${user.email} to verify your account.")
+        return EmailConfirmedResponse("Please, check your email and spam/junk folder for ${user.email} to verify your account.")
 
     }
 

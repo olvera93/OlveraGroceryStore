@@ -39,5 +39,5 @@ class JwtKeyTest {
 
         assertEquals("Invalid JWT secret key", actualException.message)
     }
-    
+
 }

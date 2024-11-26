@@ -4,10 +4,7 @@ import com.olvera.groceries.dto.AuthenticationRequest
 import com.olvera.groceries.dto.AuthenticationResponse
 import com.olvera.groceries.dto.EmailConfirmedResponse
 import com.olvera.groceries.dto.RegisterRequest
-import com.olvera.groceries.error.AccountVerificationException
-import com.olvera.groceries.error.SignUpException
-import com.olvera.groceries.error.TokenExpiredException
-import com.olvera.groceries.error.UsernamePasswordMismatchException
+import com.olvera.groceries.error.*
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.VerificationToken
 import com.olvera.groceries.repository.AppUserRepository
@@ -104,7 +101,7 @@ class AccountManagementServiceImpl(
     }
 
     override fun resetPassword(email: String): EmailConfirmedResponse {
-        val user = userRepository.findByEmail(email) ?: throw UsernameNotFoundException("Email: $email does not exist!")
+        val user = userRepository.findByEmail(email) ?: throw UserNotFoundException("Email: $email does not exist!")
 
         val newPassword = UUID.randomUUID().toString().take(TEN_CHARACTERS)
         user.clientPassword = passwordEncoder.encode(newPassword)

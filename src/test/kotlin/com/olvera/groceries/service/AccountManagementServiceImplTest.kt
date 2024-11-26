@@ -3,10 +3,7 @@ package com.olvera.groceries.service
 import com.olvera.groceries.dto.AuthenticationRequest
 import com.olvera.groceries.dto.EmailConfirmedResponse
 import com.olvera.groceries.dto.RegisterRequest
-import com.olvera.groceries.error.AccountVerificationException
-import com.olvera.groceries.error.SignUpException
-import com.olvera.groceries.error.TokenExpiredException
-import com.olvera.groceries.error.UsernamePasswordMismatchException
+import com.olvera.groceries.error.*
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.VerificationToken
 import com.olvera.groceries.repository.AppUserRepository
@@ -262,11 +259,42 @@ class AccountManagementServiceImplTest {
         every { mockUserRepository.findByAppUsername(any()) } returns user
         every { mockAuthenticationManager.authenticate(any()) } throws bce
 
-        val actualResult: UsernamePasswordMismatchException = assertThrows { objectUnderTest.signIn(authenticationRequest) }
+        val actualResult: UsernamePasswordMismatchException =
+            assertThrows { objectUnderTest.signIn(authenticationRequest) }
 
         assertEquals("Username or password is incorrect", actualResult.message)
         verify { mockUserRepository.findByAppUsername(any()) }
         verify { mockAuthenticationManager.authenticate(any()) }
+    }
+
+    @Test
+    fun `when reset password for user is called then expect now password sent message`() {
+
+        val password = "top-secret-password"
+        every { mockUserRepository.findByEmail(any()) } returns user
+        every { mockPasswordEncoder.encode(any()) } returns password
+        every { mockUserRepository.save(user) } returns user
+        every { mockEmailService.sendPasswordResetEmail(any(), any()) } returns Unit
+
+        val actualResult = objectUnderTest.resetPassword(user.email)
+
+        assertEquals("New password sent to ${user.email} successfully.", actualResult.message)
+
+    }
+
+    @Test
+    fun `when reset password for user is called then expect email does not exist message`() {
+
+        every { mockUserRepository.findByEmail(any()) } returns null
+
+        val actualResult: UserNotFoundException = assertThrows { objectUnderTest.resetPassword(user.email) }
+
+        assertEquals("Email: ${user.email} does not exist!", actualResult.message)
+
+        verify { mockUserRepository.findByEmail(any()) }
+        verify(exactly = 0) { mockPasswordEncoder.encode(any()) }
+        verify(exactly = 0) { mockUserRepository.save(any()) }
+        verify(exactly = 0) { mockEmailService.sendVerificationEmail(any(), any()) }
 
 
     }

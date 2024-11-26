@@ -6,6 +6,7 @@ import com.olvera.groceries.dto.RegisterRequest
 import com.olvera.groceries.error.AccountVerificationException
 import com.olvera.groceries.error.SignUpException
 import com.olvera.groceries.error.TokenExpiredException
+import com.olvera.groceries.error.UsernamePasswordMismatchException
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.VerificationToken
 import com.olvera.groceries.repository.AppUserRepository
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -153,7 +157,7 @@ class AccountManagementServiceImplTest {
 
         every { mockTokenRepository.findByToken(token) } returns null
 
-        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token)  }
+        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token) }
 
         assertEquals("Invalid Token!", actualResult.message)
         verify { mockTokenRepository.findByToken(token) }
@@ -173,11 +177,11 @@ class AccountManagementServiceImplTest {
 
         every { mockTokenRepository.findByToken(token) } returns currentToken
 
-        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token)  }
+        val actualResult = assertThrows<AccountVerificationException> { objectUnderTest.verify(token) }
 
         assertEquals("Account is already verified for: $currentUser", actualResult.message)
         verify { mockTokenRepository.findByToken(token) }
-        verify(exactly = 0) { mockUserRepository.save(currentUser)  }
+        verify(exactly = 0) { mockUserRepository.save(currentUser) }
     }
 
     @Test
@@ -193,12 +197,79 @@ class AccountManagementServiceImplTest {
         every { mockTokenRepository.save(expiredToken) } returns expiredToken
         every { mockEmailService.sendVerificationEmail(user, any()) } returns Unit
 
-        val actualResult = assertThrows<TokenExpiredException> { objectUnderTest.verify(token)  }
+        val actualResult = assertThrows<TokenExpiredException> { objectUnderTest.verify(token) }
 
-        assertEquals("Token expired, a new verification link has been sent to your email: ${user.email}", actualResult.message)
+        assertEquals(
+            "Token expired, a new verification link has been sent to your email: ${user.email}",
+            actualResult.message
+        )
         verify { mockTokenRepository.findByToken(token) }
-        verify { mockTokenRepository.save(expiredToken)  }
+        verify { mockTokenRepository.save(expiredToken) }
         verify { mockEmailService.sendVerificationEmail(user, any()) }
     }
+
+    @Test
+    fun `when sign in user is called then expect authentication response`() {
+        val mockAuthentication: Authentication = mockk(relaxed = true)
+        val expectedAccessToken = "a1b2c3"
+        val expectedRefreshToken = "d4e5f6"
+
+        every { mockUserRepository.findByAppUsername(any()) } returns user
+        user.isVerified = true
+
+        every { mockAuthenticationManager.authenticate(any()) } returns mockAuthentication
+        every { mockJwtService.generateAccessToken(user) } returns expectedAccessToken
+        every { mockJwtService.generateRefreshToken(user) } returns expectedRefreshToken
+
+        val actualResult = objectUnderTest.signIn(authenticationRequest)
+
+        assertEquals(expectedAccessToken, actualResult.accessToken)
+        assertEquals(expectedRefreshToken, actualResult.refreshToken)
+    }
+
+    @Test
+    fun `when sign in user is called then expect user not found message`() {
+        every { mockUserRepository.findByAppUsername(any()) } returns null
+
+        val actualResult: UsernameNotFoundException = assertThrows { objectUnderTest.signIn(authenticationRequest) }
+
+        assertEquals("User not found!", actualResult.message)
+    }
+
+    @Test
+    fun `when sign in user is called then expect verification link not clicked message`() {
+
+        every { mockUserRepository.findByAppUsername(any()) } returns user
+        user.isVerified = false
+
+        val actualResult: AccountVerificationException = assertThrows { objectUnderTest.signIn(authenticationRequest) }
+
+        assertEquals(
+            "You did not click on the verification link yet, check your mails for ${user.email}",
+            actualResult.message
+        )
+
+        verify { mockUserRepository.findByAppUsername(any()) }
+        verify(exactly = 0) { mockAuthenticationManager.authenticate(any()) }
+    }
+
+    @Test
+    fun `when sign in user is called then expect username or password is incorrect message`() {
+        user.isVerified = true
+
+        val bce = BadCredentialsException("Username or password is incorrect")
+
+        every { mockUserRepository.findByAppUsername(any()) } returns user
+        every { mockAuthenticationManager.authenticate(any()) } throws bce
+
+        val actualResult: UsernamePasswordMismatchException = assertThrows { objectUnderTest.signIn(authenticationRequest) }
+
+        assertEquals("Username or password is incorrect", actualResult.message)
+        verify { mockUserRepository.findByAppUsername(any()) }
+        verify { mockAuthenticationManager.authenticate(any()) }
+
+
+    }
+
 
 }

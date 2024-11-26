@@ -1,5 +1,6 @@
 package com.olvera.groceries.service
 
+import com.olvera.groceries.error.UserNotFoundException
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.repository.AppUserRepository
 import com.olvera.groceries.service.impl.ClientSessionServiceImpl
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContext
@@ -69,4 +71,26 @@ class ClientSessionServiceImplTest {
 
         assertEquals(user, actualResult)
     }
+
+    @Test
+    fun `when find current session user is called then expect authenticated user not found message`() {
+
+        every { mockSecurityContext.authentication } returns null
+
+        val actualResult: UserNotFoundException = assertThrows { objectUnderTest.findCurrentSessionUser() }
+
+        assertEquals("Authenticated user not found", actualResult.message)
+    }
+
+    @Test
+    fun `when find current session user is called then expect user not found with username message`() {
+        every { mockAuthentication.principal } returns user
+        every { mockUserRepository.findByAppUsername(any()) } returns null
+
+        val actualResult: UserNotFoundException = assertThrows { objectUnderTest.findCurrentSessionUser() }
+
+        assertEquals("User ${user.username} not found", actualResult.message)
+    }
+
+
 }

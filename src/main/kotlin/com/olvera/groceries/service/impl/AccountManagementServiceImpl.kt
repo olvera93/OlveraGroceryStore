@@ -4,10 +4,7 @@ import com.olvera.groceries.dto.AuthenticationRequest
 import com.olvera.groceries.dto.AuthenticationResponse
 import com.olvera.groceries.dto.EmailConfirmedResponse
 import com.olvera.groceries.dto.RegisterRequest
-import com.olvera.groceries.error.AccountVerificationException
-import com.olvera.groceries.error.SignUpException
-import com.olvera.groceries.error.TokenExpiredException
-import com.olvera.groceries.error.UsernamePasswordMismatchException
+import com.olvera.groceries.error.*
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.VerificationToken
 import com.olvera.groceries.repository.AppUserRepository
@@ -56,7 +53,7 @@ class AccountManagementServiceImpl(
         tokenRepository.save(verificationToken)
         emailService.sendVerificationEmail(savedUser, token)
 
-        return EmailConfirmedResponse("Please, check your email and spam/junk for ${user.email} to verify your account.")
+        return EmailConfirmedResponse("Please, check your email and spam/junk folder for ${user.email} to verify your account.")
 
     }
 
@@ -66,12 +63,7 @@ class AccountManagementServiceImpl(
 
         val user = currentVerificationToken.appUser
         if (currentVerificationToken.isExpired()) {
-            log.error("Token expired for user: $user")
-            currentVerificationToken.token = UUID.randomUUID().toString()
-            currentVerificationToken.expiryDate = Instant.now().plus(15, ChronoUnit.MINUTES)
-            tokenRepository.save(currentVerificationToken)
-            emailService.sendVerificationEmail(user, currentVerificationToken.token)
-            throw TokenExpiredException("Token expired, a new verification link has been sent to your email: ${user.email}")
+            handleExpiredToken(user, currentVerificationToken)
         }
 
         if (user.isVerified) {
@@ -109,7 +101,7 @@ class AccountManagementServiceImpl(
     }
 
     override fun resetPassword(email: String): EmailConfirmedResponse {
-        val user = userRepository.findByEmail(email) ?: throw UsernameNotFoundException("Email: $email does not exist!")
+        val user = userRepository.findByEmail(email) ?: throw UserNotFoundException("Email: $email does not exist!")
 
         val newPassword = UUID.randomUUID().toString().take(TEN_CHARACTERS)
         user.clientPassword = passwordEncoder.encode(newPassword)
@@ -147,5 +139,14 @@ class AccountManagementServiceImpl(
             log.error("Password and password confirmation does not match: $request")
             throw SignUpException("Password and password confirmation does not match!")
         }
+    }
+
+    private fun handleExpiredToken(user: AppUser, currentVerificationToken: VerificationToken) {
+        log.error("Token expired for user: $user")
+        currentVerificationToken.token = UUID.randomUUID().toString()
+        currentVerificationToken.expiryDate = Instant.now().plus(15, ChronoUnit.MINUTES)
+        tokenRepository.save(currentVerificationToken)
+        emailService.sendVerificationEmail(user, currentVerificationToken.token)
+        throw TokenExpiredException("Token expired, a new verification link has been sent to your email: ${user.email}")
     }
 }

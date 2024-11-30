@@ -6,6 +6,7 @@ import com.olvera.groceries.service.impl.EmailServiceImpl
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.mail.MessagingException
 import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -30,6 +31,9 @@ class EmailServiceImplTest {
 
     private val objectUnderTest = EmailServiceImpl(mockMailSender)
 
+    private val expectedException = MessagingException("Failed to send email")
+
+
     private val password = "top-secret-pw"
 
 
@@ -47,7 +51,6 @@ class EmailServiceImplTest {
 
     @Test
     fun `when send verification email is called then expect failed to send email message`() {
-        val expectedException = SignUpException("Failed to send email")
 
         every { mockMailSender.createMimeMessage() } throws expectedException
 
@@ -75,7 +78,6 @@ class EmailServiceImplTest {
 
     @Test
     fun `when send password reset email is called then expect failed to send email message`() {
-        val expectedException = SignUpException("Failed to send email")
 
         every { mockMailSender.send(any<MimeMessage>()) } throws expectedException
 

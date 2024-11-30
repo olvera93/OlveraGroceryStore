@@ -3,6 +3,7 @@ package com.olvera.groceries.service
 import com.olvera.groceries.error.JwtAuthenticationException
 import com.olvera.groceries.service.impl.JwtServiceImpl
 import com.olvera.groceries.util.JwtKey
+import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
@@ -77,6 +78,34 @@ class JwtServiceImplTest {
         assertTrue(actualResult)
 
     }
+
+    @Test
+    fun `when generate access token is called then expect username matches with result subject`() {
+        val user = mockk<UserDetails>()
+        every { user.username } returns username
+
+        val accessToken: String = objectUnderTest.generateAccessToken(user)
+        val actualResult: Claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(accessToken).payload
+        val isNotExpired: Boolean = actualResult.expiration.time <= System.currentTimeMillis() + EXPIRATION_ONE_DAY
+
+        assertEquals(username, actualResult.subject)
+        assertTrue(isNotExpired)
+    }
+
+    @Test
+    fun `when generate refresh token is called then expect username matches with result subject`() {
+        val user = mockk<UserDetails>()
+        every { user.username } returns username
+
+        val refreshToken: String = objectUnderTest.generateRefreshToken(user)
+        val actualResult: Claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(refreshToken).payload
+        val isNotExpired: Boolean = actualResult.expiration.time <= System.currentTimeMillis() + EXPIRATION_SEVEN_DAYS
+
+        assertEquals(username, actualResult.subject)
+        assertTrue(isNotExpired)
+    }
+
+
 
 
 }

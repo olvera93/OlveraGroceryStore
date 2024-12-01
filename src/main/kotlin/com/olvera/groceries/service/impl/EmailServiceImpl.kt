@@ -3,8 +3,8 @@ package com.olvera.groceries.service.impl
 import com.olvera.groceries.error.SignUpException
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.service.EmailService
+import jakarta.mail.MessagingException
 import org.slf4j.LoggerFactory
-import org.springframework.mail.MailException
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Service
@@ -140,7 +140,7 @@ class EmailServiceImpl(private val mailSender: JavaMailSender) : EmailService {
             helper.setSubject(subject)
             helper.setFrom("olvera-coding@gmail.com")
             mailSender.send(mimeMessage)
-        } catch (me: MailException) {
+        } catch (me: MessagingException) {
             logger.error("Failed to send email: ${me.message}")
             throw SignUpException("Failed to send email")
         }

@@ -43,7 +43,7 @@ class JwtServiceImpl(private val jwtKey: JwtKey) : JwtService {
                 .payload
         } catch (e: Exception) {
             log.error("Failed to extract claims from token: ${e.message}")
-            throw JwtAuthenticationException("Failed to extract claims from token: $e")
+            throw JwtAuthenticationException("Failed to extract claims from token")
         }
 
     private fun isTokenExpired(token: String): Boolean =

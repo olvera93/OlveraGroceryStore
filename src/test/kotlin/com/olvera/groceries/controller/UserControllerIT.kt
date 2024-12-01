@@ -36,6 +36,13 @@ class UserControllerIT {
 
     private val mapper = jacksonObjectMapper()
 
+    val userResponse = UserInfoResponse(
+        firstName = "John",
+        lastName = "Smith",
+        email = "john.smith@gmail.com",
+        username = "jonhsmith"
+    )
+
     @Test
     fun `when change email endpoints is called then return http 200 status`() {
 
@@ -105,6 +112,24 @@ class UserControllerIT {
         )
 
         resultActions.andExpect(MockMvcResultMatchers.status().isOk)
+    }
+
+    @Test
+    fun `when fetch info endpoint is called then return http 200 status and check response fields`() {
+        `when`(mockUserService.fetchInfo()).thenReturn(userResponse)
+
+        val resultActions: ResultActions = mockMvc.perform(
+            MockMvcRequestBuilders.get("/api/v1/user")
+                .contentType(MediaType.APPLICATION_JSON)
+        )
+
+        resultActions.andExpect(MockMvcResultMatchers.status().isOk)
+        .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.email").value(userResponse.email))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.username").value(userResponse.username))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value(userResponse.firstName))
+        .andExpect(MockMvcResultMatchers.jsonPath("$.lastName").value(userResponse.lastName))
+
     }
 
 }

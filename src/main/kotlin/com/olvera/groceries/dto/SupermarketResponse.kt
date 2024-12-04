@@ -11,5 +11,5 @@ data class SupermarketResponse(
 
     @Valid
     @Schema(example = "null", description = "")
-    @get:JsonProperty("market") val marker: Hypermarket? = null,
+    @get:JsonProperty("market") val market: Hypermarket? = null,
 )

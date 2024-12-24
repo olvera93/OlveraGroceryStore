@@ -19,4 +19,7 @@ interface ShoppingListItemService {
 
     fun updateShoppingListItems(shoppingList: ShoppingList, shoppingListItems: List<ShoppingListItem>): List<ShoppingListItem>
 
+    fun updateShoppingList(shoppingList: ShoppingList, shoppingListItems: List<ShoppingListItem>): List<ShoppingListItem>
+
+
 }

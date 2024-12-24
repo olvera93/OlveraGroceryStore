@@ -1,9 +1,6 @@
 package com.olvera.groceries.util
 
-import com.olvera.groceries.dto.ShoppingListItemCreateRequest
-import com.olvera.groceries.dto.ShoppingListItemResponse
-import com.olvera.groceries.dto.ShoppingListResponse
-import com.olvera.groceries.dto.SupermarketResponse
+import com.olvera.groceries.dto.*
 import com.olvera.groceries.model.AppUser
 import com.olvera.groceries.model.ShoppingList
 import com.olvera.groceries.model.ShoppingListItem
@@ -30,7 +27,7 @@ class ShoppingListMapper {
     }
 
     fun toEntity(
-        request: ShoppingListItemCreateRequest,
+        request: ShoppingListCreateRequest,
         supermarket: Supermarket,
         listItems: List<ShoppingListItem>,
         user: AppUser

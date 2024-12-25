@@ -6,13 +6,10 @@ import jakarta.validation.Valid
 
 data class ShoppingListUpdateRequest(
 
-    @Schema(example = "null", description = "Quantity of grocery items")
-    @get:JsonProperty("quantity") val quantity: Int? = null,
+    @Schema(example = "null", description = "Status indicating if the shopping list is completed")
+    @get:JsonProperty("isDone") val isDone: Boolean? = null,
 
-    @Schema(example = "", description = "Price of the grocery items")
-    @get:JsonProperty("price") val price: Float? = null,
-
-    @Valid
+    @field:Valid
     @Schema(example = "null", description = "")
-    @get:JsonProperty("groceryItem") val groceryItem: GroceryItemUpdateRequest? = null,
+    @get:JsonProperty("supermarket") val supermarket: SupermarketUpdateRequest? = null
 )

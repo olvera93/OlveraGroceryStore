@@ -2,6 +2,7 @@ package com.olvera.groceries.service.impl
 
 import com.olvera.groceries.dto.*
 import com.olvera.groceries.error.BadRequestException
+import com.olvera.groceries.error.ShoppingListItemNotFoundException
 import com.olvera.groceries.error.ShoppingListNotFoundException
 import com.olvera.groceries.error.SupermarketException
 import com.olvera.groceries.model.AppUser
@@ -16,6 +17,7 @@ import com.olvera.groceries.service.SupermarketService
 import com.olvera.groceries.util.ShoppingListItemMapper
 import com.olvera.groceries.util.ShoppingListMapper
 import com.olvera.groceries.util.SupermarketMapper
+import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 
 @Service
@@ -30,6 +32,7 @@ class ShoppingListServiceImpl(
 ) : ShoppingListService {
 
     override fun createShoppingList(request: ShoppingListCreateRequest, user: AppUser): ShoppingListResponse {
+        validateRequest(request)
         val supermarket: Supermarket = supermarketService.findSupermarketByName(request.supermarket.market)
         val shoppingList = createThenSaveShoppingList(request, supermarket, user)
         val listItems = createThenAttachShoppingListItems(request, shoppingList)
@@ -45,31 +48,58 @@ class ShoppingListServiceImpl(
     }
 
     override fun getShoppingLists(user: AppUser, isDone: Boolean?): Set<ShoppingListResponse> {
-        TODO("Not yet implemented")
+        val shoppingLists = fetchShoppingLists(user, isDone)
+        return shoppingLists.map(this::mapToShoppingListResponse).toSet()
     }
 
+    @Transactional
     override fun updateShoppingList(id: Long, request: ShoppingListUpdateRequest, user: AppUser): ShoppingListResponse {
-        TODO("Not yet implemented")
+        val shoppingList = findUserShoppingList(id, user)
+        val updatedSupermarket: Supermarket? = if (request.supermarket != null) {
+            request.supermarket.market?.let { supermarketName ->
+                supermarketService.findSupermarketByName(
+                    supermarketName
+                )
+            }
+        } else {
+            shoppingList.supermarket ?: Supermarket(name = Hypermarket.OTHER)
+        }
+        shoppingList.apply {
+            this.isDone = request.isDone ?: this.isDone
+            this.supermarket = updatedSupermarket ?: this.supermarket
+        }
+        val entity: ShoppingList = shoppingListRepository.save(shoppingList)
+        return generateShoppingListResponse(
+            updatedSupermarket!!, shoppingList.shoppingListItems, entity
+        )
     }
 
+    @Transactional
     override fun deleteShoppingList(id: Long, user: AppUser) {
-        TODO("Not yet implemented")
+        val shoppingList = findUserShoppingList(id, user)
+        shoppingListItemService.deleteShoppingListItems(shoppingList.shoppingListItems)
+        shoppingListRepository.delete(shoppingList)
     }
 
-    override fun getGroceryItem(listId: Long, listItemId: Long, user: AppUser): GroceryItemResponse {
-        TODO("Not yet implemented")
+    override fun getGroceryItem(listId: Long, itemId: Long, user: AppUser): GroceryItemResponse {
+        val listResponse: ShoppingListResponse = getShoppingListById(listId, user)
+        val itemListResponse: ShoppingListItemResponse = retrieveListItemResponse(listResponse, itemId)
+        return itemListResponse.groceryItem
     }
 
     override fun updateGroceryItem(id: Long, request: GroceryItemUpdateRequest): GroceryItemResponse {
-        TODO("Not yet implemented")
+        val groceryItemResponse = groceryItemService.updateGroceryItem(id, request)
+        return groceryItemResponse
     }
 
     override fun getShoppingListItems(listId: Long, user: AppUser): Set<ShoppingListItemResponse> {
-        TODO("Not yet implemented")
+        val shoppingList: ShoppingList = findUserShoppingList(listId, user)
+        return shoppingList.shoppingListItems.map(shoppingListItemMapper::toDto).toSet()
     }
 
     override fun updateShoppingListItem(listId: Long, itemId: Long, user: AppUser): ShoppingListItemResponse {
-        TODO("Not yet implemented")
+        val shoppingList = getShoppingListById(listId, user)
+        return retrieveListItemResponse(shoppingList, itemId)
     }
 
     override fun updateShoppingListItem(
@@ -77,8 +107,9 @@ class ShoppingListServiceImpl(
         itemId: Long,
         request: ShoppingListItemUpdateRequest,
         user: AppUser
-    ): ShoppingListResponse {
-        TODO("Not yet implemented")
+    ): ShoppingListItemResponse {
+        val listItem = shoppingListItemService.updateShoppingListItem(itemId, request)
+        return shoppingListItemMapper.toDto(listItem)
     }
 
     override fun createShoppingListItem(
@@ -86,11 +117,18 @@ class ShoppingListServiceImpl(
         request: ShoppingListItemCreateRequest,
         user: AppUser
     ): ShoppingListItemResponse {
-        TODO("Not yet implemented")
+        val shoppingList = findUserShoppingList(listId, user)
+        val listItem = shoppingListItemService.createShoppingListItem(request, shoppingList)
+        return shoppingListItemMapper.toDto(listItem)
     }
 
+    @Transactional
     override fun deleteShoppingListItem(listId: Long, itemId: Long, user: AppUser) {
-        TODO("Not yet implemented")
+        val shoppingList = shoppingListRepository.findByIdAndUser(listId, user)
+        val listItem = shoppingList?.shoppingListItems?.find { listItem -> listItem.id == itemId }
+            ?: throw ShoppingListItemNotFoundException("Shopping list item with ID: $itemId not found!")
+        shoppingListItemService.deleteShoppingListItem(itemId)
+        listItem.groceryItem?.let { groceryItemService.deleteGroceryItem(it.id) }
     }
 
     private fun validateRequest(request: ShoppingListCreateRequest) {
@@ -136,5 +174,27 @@ class ShoppingListServiceImpl(
         val shoppingList = shoppingListRepository.findByIdAndUser(id, user)
             ?: throw ShoppingListNotFoundException("Shopping list with ID: $id does not exist")
         return shoppingList
+    }
+
+    private fun fetchShoppingLists(user: AppUser, isDone: Boolean?): List<ShoppingList> {
+        return if (isDone != null) {
+            shoppingListRepository.findAllByUserAndIsDone(user, isDone) ?: emptyList()
+        } else {
+            shoppingListRepository.findAllByAppUser(user) ?: emptyList()
+        }
+    }
+
+    private fun mapToShoppingListResponse(shoppingList: ShoppingList): ShoppingListResponse {
+        val supermarketResponse = shoppingList.supermarket?.let(supermarketMapper::toDto) ?: SupermarketResponse()
+        val listItems = shoppingList.shoppingListItems.map(shoppingListItemMapper::toDto)
+        return shoppingListMapper.toDto(shoppingList, supermarketResponse, listItems)
+    }
+
+    private fun retrieveListItemResponse(
+        listResponse: ShoppingListResponse,
+        listItemId: Long
+    ): ShoppingListItemResponse {
+        return listResponse.shoppingListItems?.firstOrNull { itemResponse -> itemResponse.id == listItemId }
+            ?: throw BadRequestException("Shopping list item with ID: $listItemId does not exist")
     }
 }

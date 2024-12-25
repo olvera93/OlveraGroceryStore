@@ -15,7 +15,7 @@ interface ShoppingListService {
 
     fun deleteShoppingList(id: Long, user: AppUser)
 
-    fun getGroceryItem(listId: Long, listItemId: Long, user: AppUser): GroceryItemResponse
+    fun getGroceryItem(listId: Long, itemId: Long, user: AppUser): GroceryItemResponse
 
     fun updateGroceryItem(id: Long, request: GroceryItemUpdateRequest): GroceryItemResponse
 
@@ -36,5 +36,5 @@ interface ShoppingListService {
         itemId: Long,
         request: ShoppingListItemUpdateRequest,
         user: AppUser
-    ): ShoppingListResponse
+    ): ShoppingListItemResponse
 }

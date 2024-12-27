@@ -71,4 +71,12 @@ class ShoppingListItemServiceImpl(
         shoppingListItems.forEach { it.shoppingList = shoppingList }
         return repository.saveAllAndFlush(shoppingListItems)
     }
+
+    override fun updateShoppingList(
+        shoppingList: ShoppingList,
+        shoppingListItems: List<ShoppingListItem>
+    ): List<ShoppingListItem> {
+        shoppingListItems.forEach { it.shoppingList = shoppingList }
+        return repository.saveAllAndFlush(shoppingListItems)
+    }
 }

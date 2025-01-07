@@ -19,7 +19,7 @@ class SwaggerConfig {
             .info(
                 Info()
                     .title("Grocery Shopping")
-                    .description("This API exposes RESTful authentication and authorisation via JWT.")
+                    .description("This API exposes RESTful authentication and authorization via JWT.")
                     .version("1.0.0")
                     .license(
                         License()

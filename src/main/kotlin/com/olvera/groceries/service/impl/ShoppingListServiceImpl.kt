@@ -97,7 +97,7 @@ class ShoppingListServiceImpl(
         return shoppingList.shoppingListItems.map(shoppingListItemMapper::toDto).toSet()
     }
 
-    override fun updateShoppingListItem(listId: Long, itemId: Long, user: AppUser): ShoppingListItemResponse {
+    override fun getShoppingListItem(listId: Long, itemId: Long, user: AppUser): ShoppingListItemResponse {
         val shoppingList = getShoppingListById(listId, user)
         return retrieveListItemResponse(shoppingList, itemId)
     }
